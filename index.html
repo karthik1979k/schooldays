@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>WHRHS Schedule</title>
+<style>
+  :root{
+    --ink:#1c1b19;
+    --paper:#faf7f0;
+    --line:#e4ddcd;
+    --day1:#3a7d5c;
+    --day2:#4f7fb8;
+    --day3:#c9a227;
+    --day4:#b0453f;
+    --off:#9a938a;
+    --early:#a8622c;
+    --accent:#1c1b19;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{background:#ece6d8;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;
+    background:#ece6d8; color:var(--ink);
+    min-height:100vh;
+  }
+  .app-shell{
+    background:var(--paper);
+    max-width:480px; margin:0 auto;
+    padding-top:env(safe-area-inset-top); padding-bottom:calc(env(safe-area-inset-bottom) + 24px);
+    min-height:100vh;
+  }
+  @media (min-width:640px){
+    body{padding:32px 16px;}
+    .app-shell{
+      min-height:auto; border-radius:20px; box-shadow:0 12px 40px rgba(28,27,25,0.14);
+      border:1px solid var(--line); overflow:hidden; padding-bottom:24px;
+    }
+    .month-cell{min-height:68px;}
+    .month-cell .num{font-size:14px;}
+    .chip{min-width:72px;}
+  }
+  header{
+    padding:28px 20px 16px; border-bottom:1px solid var(--line);
+  }
+  header h1{font-size:15px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; margin:0; color:#6b6459;}
+
+  .kidtabs{display:flex; gap:8px; padding:14px 20px 0; overflow-x:auto;}
+  .kidtab{
+    flex:0 0 auto; border:1px solid var(--line); background:#fff; color:#6b6459;
+    font:inherit; font-size:13px; font-weight:600; padding:8px 14px; border-radius:100px; cursor:pointer;
+  }
+  .kidtab.active{background:var(--ink); border-color:var(--ink); color:#fff;}
+
+  .controls{padding:16px 20px 0; display:flex; align-items:center; gap:6px; flex-wrap:wrap; row-gap:10px;}
+  .segment{
+    display:flex; background:#efe9db; border-radius:10px; padding:3px; flex:0 0 auto;
+  }
+  .segment button{
+    border:none; background:transparent; font:inherit; font-size:13px; font-weight:600;
+    padding:6px 10px; border-radius:8px; color:#6b6459; cursor:pointer;
+  }
+  .segment button.active{background:#fff; color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08);}
+
+  .datewrap{display:flex; align-items:center; gap:4px;}
+  .datewrap label{
+    font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em;
+    color:#9a938a; margin-right:1px; white-space:nowrap;
+  }
+  .datewrap .nav{
+    border:none; background:#efe9db; width:26px; height:26px; border-radius:50%; flex:0 0 auto;
+    font-size:14px; font-weight:700; color:var(--ink); cursor:pointer;
+  }
+  .datepick{
+    font:inherit; font-size:12px; font-weight:600; border:1px solid var(--line); background:#fff;
+    border-radius:8px; padding:4px 4px; color:var(--ink); width:auto; max-width:104px;
+  }
+  .todaylink{
+    border:none; background:transparent; font:inherit; font-size:12px; font-weight:600;
+    color:var(--day2); cursor:pointer; padding:0; flex:0 0 auto;
+  }
+
+  .selected-date{
+    font-size:22px; font-weight:700; letter-spacing:-0.01em; margin:0 0 2px; color:var(--ink);
+  }
+  .hero{padding:20px 20px 8px;}
+  .hero .badge{
+    display:inline-block; font-size:13px; font-weight:600; padding:5px 12px; border-radius:100px;
+    color:#fff; margin-bottom:14px;
+  }
+  .hero h2{font-size:34px; line-height:1.08; margin:0 0 6px; font-weight:700; letter-spacing:-0.01em;}
+  .hero p{margin:0; font-size:15px; color:#6b6459;}
+  .schedule{padding:10px 20px 20px;}
+  .row{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:13px 0; border-bottom:1px solid var(--line); font-size:16px;
+  }
+  .row:last-child{border-bottom:none;}
+  .row .rowtext{display:flex; flex-direction:column; min-width:0;}
+  .row .label{font-weight:600;}
+  .row .rowtext .label{font-size:15px;}
+  .row .sub{font-size:12.5px; color:#9a938a; display:block; margin-top:2px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .row .sub .periodnum{font-weight:700; color:#6b6459;}
+  .row .time{flex:0 0 auto; font-size:13px;}
+  .row .time{font-variant-numeric:tabular-nums; color:#3a3730;}
+  .upcoming{padding:4px 20px 20px;}
+  .upcoming h3{font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:#6b6459; margin:0 0 10px;}
+  .chips{display:flex; gap:8px; overflow-x:auto; padding-bottom:6px;}
+  .chip{
+    flex:0 0 auto; min-width:64px; padding:10px 8px; border-radius:14px; text-align:center;
+    background:#fff; border:1px solid var(--line); cursor:pointer;
+  }
+  .chip .d{font-size:11px; color:#9a938a; margin-bottom:3px;}
+  .chip .n{font-size:12px; font-weight:700;}
+  .chip-active{background:var(--ink); border-color:var(--ink);}
+  .chip-active .d,.chip-active .n{color:#fff;}
+
+  .weekbox{padding:12px 20px 20px;}
+  .weekheader{
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding:2px 2px 14px;
+  }
+  .weekheader .month{font-size:20px; font-weight:700; letter-spacing:-0.01em; color:var(--ink);}
+  .weekheader .range{font-size:13px; color:#9a938a;}
+  .weekrow{
+    display:flex; align-items:center; gap:12px; padding:14px 14px; margin-bottom:8px;
+    background:#fff; border:1px solid var(--line); border-radius:14px; cursor:pointer;
+  }
+  .weekrow .wd{width:44px; flex:0 0 auto;}
+  .weekrow .wd .dow{font-size:11px; color:#9a938a; text-transform:uppercase; letter-spacing:.03em;}
+  .weekrow .wd .num{font-size:18px; font-weight:700;}
+  .weekrow .dot{width:8px; height:8px; border-radius:50%; flex:0 0 auto;}
+  .weekrow .wlabel{flex:1 1 auto; font-size:15px; font-weight:600;}
+  .weekrow .wtime{font-size:12px; color:#9a938a; font-variant-numeric:tabular-nums;}
+  .weekrow.istoday{border-color:var(--ink); box-shadow:0 0 0 1px var(--ink);}
+
+  .monthbox{padding:12px 20px 20px;}
+  .monthheader{
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding:2px 2px 14px;
+  }
+  .monthheader .month{font-size:20px; font-weight:700; letter-spacing:-0.01em; color:var(--ink);}
+  .weekday-row{display:grid; grid-template-columns:repeat(7,1fr); text-align:center; margin-bottom:6px;}
+  .weekday-row span{font-size:11px; font-weight:600; color:#9a938a; text-transform:uppercase;}
+  .month-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px;}
+  .month-cell{
+    min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border-radius:10px; cursor:pointer; background:#fff; border:1px solid var(--line); position:relative;
+    padding:6px 2px; gap:2px;
+  }
+  .month-cell.empty{background:transparent; border:none; cursor:default; min-height:0;}
+  .month-cell .num{font-size:13px; font-weight:700; color:var(--ink); line-height:1;}
+  .month-cell .lbl{
+    font-size:9.5px; font-weight:700; line-height:1.1; text-align:center; color:#fff;
+    padding:2px 4px; border-radius:5px; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .month-cell.istoday{border-color:var(--ink); box-shadow:0 0 0 1px var(--ink);}
+  .month-cell.isselected{background:#efe9db;}
+  .month-cell.isselected .num{color:var(--ink);}
+  .month-cell.isoff .num{color:#c2bcae;}
+  .month-cell.isoff .lbl{background:#efe9db !important; color:#9a938a;}
+  .month-legend{display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line);}
+  .month-legend .item{display:flex; align-items:center; gap:6px; font-size:12px; color:#6b6459;}
+  .month-legend .sw{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
+
+  @media (hover:hover) and (pointer:fine){
+    .segment button:hover{color:var(--ink); background:rgba(255,255,255,.6);}
+    .segment button.active:hover{background:#fff;}
+    .datewrap .nav:hover{background:#e4dcc6;}
+    .todaylink:hover{text-decoration:underline;}
+    .chip:hover{border-color:var(--ink); transform:translateY(-1px);}
+    .chip-active:hover{border-color:var(--ink);}
+    .weekrow:hover{border-color:var(--ink);}
+    .month-cell:not(.empty):hover{border-color:var(--ink);}
+    .chip,.weekrow,.month-cell{transition:border-color .12s ease, transform .12s ease;}
+  }
+  footer{padding:18px 20px 4px; font-size:11px; color:#9a938a; text-align:center;}
+  .note{margin:0 20px 18px; padding:12px 14px; background:#fff8e8; border:1px solid #eddca0; border-radius:12px; font-size:13px; color:#6b5a20;}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+<header>
+  <h1 id="kidTitle">WHRHS</h1>
+</header>
+
+<div class="kidtabs" id="kidTabs">
+  <button class="kidtab active" data-kid="whrhs">WHRHS Schooler</button>
+  <button class="kidtab" data-kid="middleschool">Middle Schooler</button>
+</div>
+
+<div class="controls">
+  <div class="segment">
+    <button id="btnDay" class="active">Day</button>
+    <button id="btnWeek">Week</button>
+    <button id="btnMonth">Month</button>
+  </div>
+  <div class="datewrap">
+    <label for="datePick">Date</label>
+    <button id="prevBtn" class="nav" aria-label="Previous">‹</button>
+    <input type="date" id="datePick" class="datepick">
+    <button id="nextBtn" class="nav" aria-label="Next">›</button>
+  </div>
+  <button class="todaylink" id="todayBtn">Today</button>
+</div>
+
+<div id="dayView">
+  <div class="hero">
+    <p class="selected-date" id="selectedDateLine"></p>
+    <span class="badge" id="badge">—</span>
+    <h2 id="headline">Loading…</h2>
+    <p id="subline"></p>
+  </div>
+  <div class="schedule" id="scheduleBox"></div>
+</div>
+
+<div id="weekView" class="weekbox" style="display:none;"></div>
+
+<div id="monthView" class="monthbox" style="display:none;"></div>
+
+<div class="upcoming" id="upcomingWrap">
+  <h3 id="upcomingTitle">Next 7 days</h3>
+  <div class="chips" id="chips"></div>
+</div>
+
+<div class="note">Rotation is computed from the school start date plus known closed/early days — double‑check against the official calendar and let me know if a date looks off so it can be fixed.</div>
+
+<footer id="footerHint">Add to Home Screen from Safari's Share menu for one‑tap access on iPhone.</footer>
+
+</div>
+
+<script>
+/* ---------- 0. Your son's actual classes (Period -> Subject/Teacher/Room) ---------- */
+const PERIOD_INFO = {
+  1: {subject:"Biology H",        teacher:"Williams, Drew",      room:"RM042"},
+  2: {subject:"Digital Marketing",teacher:"Strelecki, Raymond",  room:"RM129"},
+  3: {subject:"Spanish 2CP",      teacher:"Roan, Colleen",       room:"RM258"},
+  4: {subject:"Geometry A",       teacher:"Salton, Laura",       room:"RM071"},
+  5: {subject:"Health 1",         teacher:"Ascolese, Joseph J",  room:"RM121"},
+  6: {subject:"CAD Architecture", teacher:"Ponzio, Peter",       room:"RM004"},
+  7: {subject:"World History A",  teacher:"Yuknis, Cara",        room:"RM112"},
+  8: {subject:"English 1A",       teacher:"Gourley, Jacob",      room:"RM279"},
+};
+const HOMEROOM_INFO = {subject:"Homeroom", teacher:"Gibson, Christopher F", room:"RM082"};
+
+// Builds one schedule row. `key` is a period number (1-8), "HOMEROOM", or "LUNCH".
+function makeRow(key, start, end){
+  if (key === "LUNCH"){
+    return {label:"Lunch", start, end, subject:null, teacher:null, room:null};
+  }
+  if (key === "HOMEROOM"){
+    return {label:"Homeroom", start, end, subject:null, teacher:HOMEROOM_INFO.teacher, room:HOMEROOM_INFO.room};
+  }
+  const info = PERIOD_INFO[key];
+  return {
+    label: "Period " + key,
+    start, end,
+    subject: info ? info.subject : null,
+    teacher: info ? info.teacher : null,
+    room: info ? info.room : null
+  };
+}
+
+/* ---------- 1. FIXED PERIOD-TIME SCHEDULES (from the Time Schedules sheet) ---------- */
+
+// Rotating Drop Schedule: each time slot maps to a DIFFERENT period number
+// depending on whether it's Day 1, 2, 3, or 4 (per the printed table).
+const ROTATING_SLOTS = [
+  ["7:30","8:28"],
+  ["8:33","9:29"],
+  ["9:34","10:30"],
+  ["10:30","11:14"], // lunch, same for every day
+  ["11:17","12:13"],
+  ["12:18","1:14"],
+  ["1:19","2:15"],
+];
+const ROTATING_PERIODS_BY_DAY = {
+  1: [1,2,3,"LUNCH",5,6,7],
+  2: [2,3,4,"LUNCH",6,7,8],
+  3: [3,4,1,"LUNCH",7,8,5],
+  4: [4,1,2,"LUNCH",8,5,6],
+};
+function rotatingSchedule(dayNum){
+  const seq = ROTATING_PERIODS_BY_DAY[dayNum];
+  return {
+    name: "Day " + dayNum + " Schedule",
+    periods: ROTATING_SLOTS.map((slot,i)=> makeRow(seq[i], slot[0], slot[1]))
+  };
+}
+
+const SCHEDULES = {
+  fullday8: {
+    name: "Full 8-Period Day",
+    periods: [
+      makeRow(1,"7:30","8:11"), makeRow("HOMEROOM","8:16","8:25"), makeRow(2,"8:30","9:11"),
+      makeRow(3,"9:16","9:57"), makeRow(4,"10:02","10:43"), makeRow("LUNCH","10:43","11:13"),
+      makeRow(5,"11:16","11:57"), makeRow(6,"12:02","12:43"), makeRow(7,"12:48","1:29"),
+      makeRow(8,"1:34","2:15")
+    ]
+  },
+  earlyDismissal8: {
+    name: "Early Dismissal (8 periods)",
+    periods: [
+      makeRow(1,"7:30","8:00"), makeRow(2,"8:05","8:35"), makeRow(3,"8:40","9:10"),
+      makeRow(4,"9:15","9:45"), makeRow(5,"9:50","10:20"), makeRow(6,"10:25","10:55"),
+      makeRow(7,"11:00","11:30"), makeRow(8,"11:35","12:05")
+    ]
+  },
+  earlyDismissalJune: {
+    name: "Early Dismissal (June)",
+    periods: [
+      {label:"Slot 1", start:"7:30", end:"8:35", subject:null, teacher:null, room:null},
+      {label:"Slot 2", start:"8:40", end:"9:45", subject:null, teacher:null, room:null},
+      {label:"Slot 3", start:"9:50", end:"10:55", subject:null, teacher:null, room:null},
+      {label:"Slot 4", start:"11:00", end:"12:05", subject:null, teacher:null, room:null}
+    ]
+  }
+};
+
+// Delayed Opening: same 7-slot / lunch structure as the Rotating Schedule,
+// just later start times — so it follows the same Day 1-4 period rotation.
+const DELAYED_OPENING_SLOTS = [
+  ["9:30","10:07"],["10:12","10:49"],["10:54","11:31"],
+  ["11:31","12:11"], // lunch
+  ["12:14","12:51"],["12:56","1:33"],["1:38","2:15"]
+];
+function delayedOpeningSchedule(dayNum){
+  const seq = ROTATING_PERIODS_BY_DAY[dayNum];
+  return {
+    name: "Delayed Opening – Day " + dayNum,
+    periods: DELAYED_OPENING_SLOTS.map((slot,i)=> makeRow(seq[i], slot[0], slot[1]))
+  };
+}
+
+// Advance-Warning Early Dismissal: same 6 non-lunch slots as the Rotating
+// Schedule (lunch period dropped), compressed times — same Day 1-4 rotation.
+const ADVANCE_WARNING_SLOTS = [
+  ["7:30","8:10"],["8:15","8:55"],["9:00","9:40"],
+  ["9:45","10:25"],["10:30","11:10"],["11:15","11:55"]
+];
+const ADVANCE_WARNING_PERIODS_BY_DAY = {
+  1: [1,2,3,5,6,7],
+  2: [2,3,4,6,7,8],
+  3: [3,4,1,7,8,5],
+  4: [4,1,2,8,5,6],
+};
+function advanceWarningSchedule(dayNum){
+  const seq = ADVANCE_WARNING_PERIODS_BY_DAY[dayNum];
+  return {
+    name: "Advance-Warning Dismissal – Day " + dayNum,
+    periods: ADVANCE_WARNING_SLOTS.map((slot,i)=> makeRow(seq[i], slot[0], slot[1]))
+  };
+}
+
+/* ---------- 2. FULL-YEAR EXCEPTIONS (edit this if a date is wrong) ---------- */
+// type: "closed" (no school, breaks the Day1-4 cycle, not counted)
+//       "full"   (special full orientation day, not part of cycle)
+//       "early"  (early dismissal day, not part of cycle)
+//       "earlyJune" (June early-dismissal slot schedule, not part of cycle)
+const EXCEPTIONS = {
+  "2026-08-24":{type:"closed",  name:"Staff Development Day"},
+  "2026-08-25":{type:"closed",  name:"Staff Development Day"},
+  "2026-08-26":{type:"full",    name:"First Day of School"},
+  "2026-09-07":{type:"closed",  name:"Labor Day"},
+  "2026-09-21":{type:"closed",  name:"Yom Kippur"},
+  "2026-10-09":{type:"early",   name:"Early Dismissal"},
+  "2026-10-12":{type:"closed",  name:"Staff Development Day"},
+  "2026-11-05":{type:"closed",  name:"NJEA Convention"},
+  "2026-11-06":{type:"closed",  name:"NJEA Convention"},
+  "2026-11-25":{type:"early",   name:"Thanksgiving Recess – Early Dismissal"},
+  "2026-11-26":{type:"closed",  name:"Thanksgiving Recess"},
+  "2026-11-27":{type:"closed",  name:"Thanksgiving Recess"},
+  "2026-12-23":{type:"early",   name:"Early Dismissal"},
+  "2026-12-24":{type:"closed",  name:"Winter Recess"},
+  "2026-12-25":{type:"closed",  name:"Winter Recess"},
+  "2026-12-26":{type:"closed",  name:"Winter Recess"},
+  "2026-12-27":{type:"closed",  name:"Winter Recess"},
+  "2026-12-28":{type:"closed",  name:"Winter Recess"},
+  "2026-12-29":{type:"closed",  name:"Winter Recess"},
+  "2026-12-30":{type:"closed",  name:"Winter Recess"},
+  "2026-12-31":{type:"closed",  name:"Winter Recess"},
+  "2027-01-01":{type:"closed",  name:"Winter Recess"},
+  "2027-01-18":{type:"closed",  name:"MLK Jr. Day"},
+  "2027-02-15":{type:"closed",  name:"Presidents' Day"},
+  "2027-03-08":{type:"closed",  name:"Staff Development Day"},
+  "2027-03-26":{type:"closed",  name:"Good Friday"},
+  "2027-04-12":{type:"closed",  name:"Spring Recess"},
+  "2027-04-13":{type:"closed",  name:"Spring Recess"},
+  "2027-04-14":{type:"closed",  name:"Spring Recess"},
+  "2027-04-15":{type:"closed",  name:"Spring Recess"},
+  "2027-04-16":{type:"closed",  name:"Spring Recess"},
+  "2027-05-28":{type:"closed",  name:"Memorial Day"},
+  "2027-05-29":{type:"closed",  name:"Memorial Day"},
+  "2027-05-30":{type:"closed",  name:"Memorial Day"},
+  "2027-05-31":{type:"closed",  name:"Memorial Day"},
+  "2027-06-03":{type:"earlyJune", name:"Early Dismissal"},
+  "2027-06-04":{type:"earlyJune", name:"Early Dismissal"},
+  "2027-06-05":{type:"earlyJune", name:"Early Dismissal"},
+  "2027-06-06":{type:"earlyJune", name:"Early Dismissal"},
+  "2027-06-07":{type:"earlyJune", name:"Early Dismissal"},
+  "2027-06-08":{type:"earlyJune", name:"Early Dismissal"},
+  "2027-06-09":{type:"earlyJune", name:"Early Dismissal"},
+  "2027-06-10":{type:"earlyJune", name:"Early Dismissal"},
+  "2027-06-11":{type:"earlyJune", name:"Early Dismissal – Graduation"}
+};
+
+const START = "2026-08-27"; // first "Day 1" (day after full orientation day)
+const SCHOOL_END = "2027-06-11";
+
+/* ---------- 2b. MIDDLE SCHOOL (Green Brook Township) — no period rotation given,
+   just regular school day vs closed vs one-session (half) day ---------- */
+const EXCEPTIONS_MS = {
+  "2026-08-24":{type:"closed", name:"Staff Development Day"},
+  "2026-08-25":{type:"closed", name:"Staff Development Day"},
+  "2026-08-26":{type:"closed", name:"Staff Development Day"},
+  "2026-09-07":{type:"closed", name:"Labor Day"},
+  "2026-09-11":{type:"closed", name:"Rosh Hashanah"},
+  "2026-09-21":{type:"closed", name:"Yom Kippur"},
+  "2026-10-09":{type:"oneSession", name:"One-Session Day"},
+  "2026-10-12":{type:"closed", name:"Columbus Day / Staff Development"},
+  "2026-10-20":{type:"closed", name:"Diwali"},
+  "2026-11-02":{type:"oneSession", name:"Parent Teacher Conferences"},
+  "2026-11-03":{type:"oneSession", name:"Parent Teacher Conferences"},
+  "2026-11-04":{type:"oneSession", name:"Parent Teacher Conferences"},
+  "2026-11-05":{type:"closed", name:"NJEA Convention"},
+  "2026-11-06":{type:"closed", name:"NJEA Convention"},
+  "2026-11-25":{type:"oneSession", name:"Thanksgiving Recess Begins"},
+  "2026-11-26":{type:"closed", name:"Thanksgiving Recess"},
+  "2026-11-27":{type:"closed", name:"Thanksgiving Recess"},
+  "2026-12-23":{type:"oneSession", name:"One-Session Day"},
+  "2026-12-24":{type:"closed", name:"Winter Recess"},
+  "2026-12-25":{type:"closed", name:"Winter Recess"},
+  "2026-12-26":{type:"closed", name:"Winter Recess"},
+  "2026-12-27":{type:"closed", name:"Winter Recess"},
+  "2026-12-28":{type:"closed", name:"Winter Recess"},
+  "2026-12-29":{type:"closed", name:"Winter Recess"},
+  "2026-12-30":{type:"closed", name:"Winter Recess"},
+  "2026-12-31":{type:"closed", name:"Winter Recess"},
+  "2027-01-01":{type:"closed", name:"Winter Recess"},
+  "2027-01-15":{type:"oneSession", name:"One-Session Day"},
+  "2027-01-18":{type:"closed", name:"Martin Luther King Day"},
+  "2027-02-12":{type:"closed", name:"Staff Development Day"},
+  "2027-02-15":{type:"closed", name:"Presidents' Day"},
+  "2027-03-09":{type:"closed", name:"Eid al-Fitr"},
+  "2027-03-26":{type:"closed", name:"Good Friday"},
+  "2027-04-09":{type:"oneSession", name:"One-Session Day"},
+  "2027-04-12":{type:"closed", name:"Spring Recess"},
+  "2027-04-13":{type:"closed", name:"Spring Recess"},
+  "2027-04-14":{type:"closed", name:"Spring Recess"},
+  "2027-04-15":{type:"closed", name:"Spring Recess"},
+  "2027-04-16":{type:"closed", name:"Spring Recess"},
+  "2027-05-28":{type:"oneSession", name:"One-Session Day"},
+  "2027-05-31":{type:"closed", name:"Memorial Day"},
+  "2027-06-14":{type:"oneSession", name:"One-Session Day"},
+  "2027-06-15":{type:"oneSession", name:"One-Session Day"},
+  "2027-06-16":{type:"oneSession", name:"One-Session Day"},
+  "2027-06-17":{type:"oneSession", name:"Last Day of School"},
+};
+const START_MS = "2026-08-27"; // first day of school for students
+const SCHOOL_END_MS = "2027-06-17";
+
+const KIDS = {
+  whrhs:       {label:"WHRHS",        hasRotation:true,  exceptions:EXCEPTIONS,    start:START,    end:SCHOOL_END,    schoolStartBound:"2026-08-24"},
+  middleschool:{label:"Middle School",hasRotation:false, exceptions:EXCEPTIONS_MS, start:START_MS, end:SCHOOL_END_MS, schoolStartBound:"2026-08-24"},
+};
+let currentKid = "whrhs";
+
+/* ---------- 3. Compute the schedule for any date ---------- */
+function fmt(d){ return d.toISOString().slice(0,10); }
+function isWeekend(d){ const w=d.getDay(); return w===0||w===6; }
+
+// Exception types that pause/skip the Day 1-4 rotation entirely (no periods run, or a
+// fixed non-rotating period order is used instead of the cycle).
+const BREAKING_TYPES = ["closed","full","early","earlyJune"];
+// Exception types that still run the normal Day 1-4 rotation, just compressed/shifted
+// in time — these need to know which Day number applies.
+const CONTINUING_TYPES = ["delayed","advanceWarning"];
+
+function classify(dateStr, kid){
+  kid = kid || currentKid;
+  const cfg = KIDS[kid];
+  const d = new Date(dateStr+"T00:00:00");
+  if (isWeekend(d)) return {kind:"weekend"};
+  if (dateStr < cfg.schoolStartBound || dateStr > cfg.end) return {kind:"outside"};
+  const ex = cfg.exceptions[dateStr];
+
+  if (!cfg.hasRotation){
+    // Middle school: no period rotation, just school day / closed / one-session day
+    if (ex && ex.type === "closed") return {kind:"closed", name:ex.name};
+    if (ex && ex.type === "oneSession") return {kind:"oneSession", name:ex.name};
+    const start = new Date(cfg.start+"T00:00:00");
+    if (d < start) return {kind:"pre"};
+    return {kind:"schoolday"};
+  }
+
+  if (ex && BREAKING_TYPES.includes(ex.type)){
+    return {kind:ex.type, name:ex.name};
+  }
+  // otherwise: count school days since START to get Day 1-4
+  // (this also covers "delayed"/"advanceWarning" dates, which still take a day number)
+  const start = new Date(cfg.start+"T00:00:00");
+  if (d < start) return {kind:"pre"};
+  let count = 0, cur = new Date(start);
+  while (cur <= d){
+    const cs = fmt(cur);
+    const cw = cur.getDay();
+    const cex = cfg.exceptions[cs];
+    const skip = (cw===0||cw===6) || (cex && BREAKING_TYPES.includes(cex.type));
+    if (!skip){
+      count++;
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  const dayNum = ((count-1) % 4) + 1;
+  if (ex && CONTINUING_TYPES.includes(ex.type)){
+    return {kind:ex.type, dayNum, name:ex.name};
+  }
+  return {kind:"day", dayNum};
+}
+
+function describe(dateStr, kid){
+  kid = kid || currentKid;
+  const c = classify(dateStr, kid);
+  switch(c.kind){
+    case "weekend": return {label:"Weekend", color:"var(--off)", schedule:null};
+    case "outside": return {label:"Outside school year", color:"var(--off)", schedule:null};
+    case "closed": return {label:"No School", sub:c.name, color:"var(--off)", schedule:null};
+    case "oneSession": return {label:"One-Session Day", sub:c.name, color:"var(--early)", schedule:null};
+    case "schoolday": return {label:"School Day", color:"var(--day1)", schedule:null};
+    case "full": return {label:"Full Day (1–8)", sub:c.name, color:"var(--day1)", schedule:SCHEDULES.fullday8};
+    case "early": return {label:"Early Dismissal", sub:c.name, color:"var(--early)", schedule:SCHEDULES.earlyDismissal8};
+    case "earlyJune": return {label:"Early Dismissal", sub:c.name, color:"var(--early)", schedule:SCHEDULES.earlyDismissalJune};
+    case "delayed": return {label:"Delayed Opening", sub:c.name || ("Day "+c.dayNum), color:"var(--early)", schedule:delayedOpeningSchedule(c.dayNum)};
+    case "advanceWarning": return {label:"Early Dismissal", sub:c.name || ("Day "+c.dayNum), color:"var(--early)", schedule:advanceWarningSchedule(c.dayNum)};
+    case "pre": return {label:"Before school starts", color:"var(--off)", schedule:null};
+    case "day": {
+      const colors=["","var(--day1)","var(--day2)","var(--day3)","var(--day4)"];
+      return {label:"Day "+c.dayNum, color:colors[c.dayNum], schedule:rotatingSchedule(c.dayNum)};
+    }
+  }
+}
+
+/* ---------- 4. State ---------- */
+const TODAY = fmt(new Date());
+let selectedDate = TODAY;
+let viewMode = "day"; // "day" | "week"
+
+function startOfWeek(dateStr){
+  const d = new Date(dateStr+"T00:00:00");
+  const day = d.getDay(); // 0=Sun
+  const diff = day===0 ? -6 : 1-day; // Monday as start
+  d.setDate(d.getDate()+diff);
+  return d;
+}
+
+/* ---------- 5. Render: Day view ---------- */
+function renderDay(dateStr){
+  const d = new Date(dateStr+"T00:00:00");
+  document.getElementById("selectedDateLine").textContent = d.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
+  const info = describe(dateStr);
+  const badge = document.getElementById("badge");
+  badge.textContent = info.label;
+  badge.style.background = info.color;
+  const h2 = document.getElementById("headline");
+  const p = document.getElementById("subline");
+  if (info.schedule){
+    h2.textContent = info.schedule.name;
+    p.textContent = info.sub ? info.sub : "Period times for this day.";
+  } else {
+    h2.textContent = info.label;
+    p.textContent = info.sub || "No period schedule.";
+  }
+  const box = document.getElementById("scheduleBox");
+  box.innerHTML = "";
+  if (info.schedule){
+    info.schedule.periods.forEach(p=>{
+      const row = document.createElement("div");
+      row.className = "row";
+      if (p.subject){
+        row.innerHTML = `
+          <div class="rowtext">
+            <span class="label">${p.subject}</span>
+            <span class="sub"><span class="periodnum">${p.label}</span>${p.teacher ? " · "+p.teacher : ""}${p.room ? " · "+p.room : ""}</span>
+          </div>
+          <span class="time">${p.start} – ${p.end}</span>`;
+      } else {
+        row.innerHTML = `<span class="label">${p.label}</span><span class="time">${p.start} – ${p.end}</span>`;
+      }
+      box.appendChild(row);
+    });
+  }
+}
+
+/* ---------- 6. Render: Week view ---------- */
+function renderWeek(dateStr){
+  const wkStart = startOfWeek(dateStr);
+  const wkEnd = new Date(wkStart);
+  wkEnd.setDate(wkStart.getDate()+6);
+
+  const box = document.getElementById("weekView");
+  box.innerHTML = "";
+
+  const header = document.createElement("div");
+  header.className = "weekheader";
+  const sameMonth = wkStart.getMonth() === wkEnd.getMonth();
+  const monthLabel = sameMonth
+    ? wkStart.toLocaleDateString(undefined,{month:"long", year:"numeric"})
+    : `${wkStart.toLocaleDateString(undefined,{month:"short"})} – ${wkEnd.toLocaleDateString(undefined,{month:"short", year:"numeric"})}`;
+  const rangeLabel = `${wkStart.toLocaleDateString(undefined,{month:"short",day:"numeric"})} – ${wkEnd.toLocaleDateString(undefined,{month:"short",day:"numeric"})}`;
+  header.innerHTML = `<span class="month">${monthLabel}</span><span class="range">${rangeLabel}</span>`;
+  box.appendChild(header);
+
+  for(let i=0;i<7;i++){
+    const d = new Date(wkStart);
+    d.setDate(wkStart.getDate()+i);
+    const ds = fmt(d);
+    const info = describe(ds);
+    const row = document.createElement("div");
+    row.className = "weekrow" + (ds===TODAY ? " istoday" : "");
+    const timeSummary = info.schedule
+      ? `${info.schedule.periods[0].start} – ${info.schedule.periods[info.schedule.periods.length-1].end}`
+      : "";
+    const wlabel = info.sub ? info.sub : (info.schedule ? info.schedule.name : info.label);
+    row.innerHTML = `
+      <div class="wd"><div class="dow">${d.toLocaleDateString(undefined,{weekday:"short"})}</div><div class="num">${d.getDate()}</div></div>
+      <div class="dot" style="background:${info.color}"></div>
+      <div class="wlabel">${wlabel}</div>
+      <div class="wtime">${timeSummary}</div>
+    `;
+    row.addEventListener("click", ()=>{
+      selectedDate = ds;
+      setView("day");
+    });
+    box.appendChild(row);
+  }
+}
+
+/* ---------- 7. Render: Month view ---------- */
+function renderMonth(dateStr){
+  const d = new Date(dateStr+"T00:00:00");
+  const year = d.getFullYear(), month = d.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const startOffset = firstOfMonth.getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+
+  const box = document.getElementById("monthView");
+  box.innerHTML = "";
+
+  const header = document.createElement("div");
+  header.className = "monthheader";
+  header.innerHTML = `<span class="month">${firstOfMonth.toLocaleDateString(undefined,{month:"long", year:"numeric"})}</span>`;
+  box.appendChild(header);
+
+  const wdRow = document.createElement("div");
+  wdRow.className = "weekday-row";
+  ["S","M","T","W","T","F","S"].forEach(l=>{
+    const s = document.createElement("span"); s.textContent = l; wdRow.appendChild(s);
+  });
+  box.appendChild(wdRow);
+
+  const grid = document.createElement("div");
+  grid.className = "month-grid";
+  for(let i=0;i<startOffset;i++){
+    const empty = document.createElement("div");
+    empty.className = "month-cell empty";
+    grid.appendChild(empty);
+  }
+  for(let day=1; day<=daysInMonth; day++){
+    const cellDate = new Date(year, month, day);
+    const ds = fmt(cellDate);
+    const info = describe(ds);
+    const cell = document.createElement("div");
+    let cls = "month-cell";
+    if (ds === TODAY) cls += " istoday";
+    if (ds === selectedDate) cls += " isselected";
+    if (info.color === "var(--off)") cls += " isoff";
+    cell.className = cls;
+    const isOff = info.color === "var(--off)";
+    const shortLabel = isOff ? "Off" : (info.label === "School Day" ? "School" : info.label.replace("Day ","D"));
+    const startTime = info.schedule ? info.schedule.periods[0].start : "";
+    cell.innerHTML = `
+      <span class="num">${day}</span>
+      <span class="lbl" style="background:${info.color}">${shortLabel}</span>
+      ${startTime ? `<span class="lbl" style="background:transparent;color:#9a938a;padding:0;">${startTime}</span>` : ""}
+    `;
+    cell.addEventListener("click", ()=>{
+      selectedDate = ds;
+      setView("day");
+    });
+    grid.appendChild(cell);
+  }
+  box.appendChild(grid);
+
+  const legend = document.createElement("div");
+  legend.className = "month-legend";
+  const items = KIDS[currentKid].hasRotation
+    ? [["var(--day1)","Day 1"], ["var(--day2)","Day 2"], ["var(--day3)","Day 3"], ["var(--day4)","Day 4"],
+       ["var(--early)","Early Dismissal"], ["var(--off)","No School / Weekend"]]
+    : [["var(--day1)","School Day"], ["var(--early)","One-Session Day"], ["var(--off)","No School / Weekend"]];
+  legend.innerHTML = items.map(([c,l])=>`<span class="item"><span class="sw" style="background:${c}"></span>${l}</span>`).join("");
+  box.appendChild(legend);
+}
+
+
+function renderUpcoming(){
+  const title = document.getElementById("upcomingTitle");
+  title.textContent = (selectedDate === TODAY) ? "Next 7 days" : "7 days from selected date";
+  const chips = document.getElementById("chips");
+  chips.innerHTML = "";
+  const base = new Date(selectedDate+"T00:00:00");
+  for(let i=0;i<7;i++){
+    const d = new Date(base);
+    d.setDate(base.getDate()+i);
+    const ds = fmt(d);
+    const info = describe(ds);
+    const chip = document.createElement("div");
+    chip.className = "chip" + (ds===selectedDate ? " chip-active" : "");
+    chip.style.borderTop = `3px solid ${info.color}`;
+    const chipLabel = info.sub ? info.sub : info.label.replace("Day ","D");
+    chip.innerHTML = `<div class="d">${d.toLocaleDateString(undefined,{weekday:"short"})} ${d.getDate()}</div><div class="n">${chipLabel}</div>`;
+    chip.addEventListener("click", ()=>{
+      selectedDate = ds;
+      setView("day");
+    });
+    chips.appendChild(chip);
+  }
+}
+
+/* ---------- 8. View switching + controls ---------- */
+function setView(mode){
+  viewMode = mode;
+  document.getElementById("btnDay").classList.toggle("active", mode==="day");
+  document.getElementById("btnWeek").classList.toggle("active", mode==="week");
+  document.getElementById("btnMonth").classList.toggle("active", mode==="month");
+  document.getElementById("dayView").style.display = mode==="day" ? "" : "none";
+  document.getElementById("weekView").style.display = mode==="week" ? "" : "none";
+  document.getElementById("monthView").style.display = mode==="month" ? "" : "none";
+  document.getElementById("upcomingWrap").style.display = mode==="day" ? "" : "none";
+  renderAll();
+}
+
+function renderAll(){
+  document.getElementById("datePick").value = selectedDate;
+  if (viewMode === "day"){
+    renderDay(selectedDate);
+    renderUpcoming();
+  } else if (viewMode === "week"){
+    renderWeek(selectedDate);
+  } else {
+    renderMonth(selectedDate);
+  }
+}
+
+document.getElementById("btnDay").addEventListener("click", ()=>setView("day"));
+document.getElementById("btnWeek").addEventListener("click", ()=>setView("week"));
+document.getElementById("btnMonth").addEventListener("click", ()=>setView("month"));
+
+document.querySelectorAll(".kidtab").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    currentKid = btn.dataset.kid;
+    document.querySelectorAll(".kidtab").forEach(b=>b.classList.toggle("active", b===btn));
+    document.getElementById("kidTitle").textContent = KIDS[currentKid].label;
+    renderAll();
+  });
+});
+
+document.getElementById("datePick").addEventListener("change", (e)=>{
+  if (e.target.value){ selectedDate = e.target.value; renderAll(); }
+});
+
+document.getElementById("todayBtn").addEventListener("click", ()=>{
+  selectedDate = TODAY;
+  renderAll();
+});
+
+document.getElementById("prevBtn").addEventListener("click", ()=>{
+  const d = new Date(selectedDate+"T00:00:00");
+  if (viewMode === "month"){ d.setMonth(d.getMonth()-1); }
+  else { d.setDate(d.getDate() - (viewMode==="week" ? 7 : 1)); }
+  selectedDate = fmt(d);
+  renderAll();
+});
+document.getElementById("nextBtn").addEventListener("click", ()=>{
+  const d = new Date(selectedDate+"T00:00:00");
+  if (viewMode === "month"){ d.setMonth(d.getMonth()+1); }
+  else { d.setDate(d.getDate() + (viewMode==="week" ? 7 : 1)); }
+  selectedDate = fmt(d);
+  renderAll();
+});
+
+renderAll();
+
+if (!('ontouchstart' in window)){
+  document.getElementById("footerHint").textContent = "Bookmark this page, or open it on your iPhone in Safari and tap Share → Add to Home Screen.";
+}
+</script>
+</body>
+</html>
