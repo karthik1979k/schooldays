@@ -233,13 +233,33 @@
 </div>
 
 <script>
+/* ---------- Marking period boundaries (used to pick semester/quarter-specific
+   classes). These dates are my best estimate for a standard NJ school-year
+   quarter split — please confirm against the actual report-card schedule
+   and tell me the real dates if these are off. ---------- */
+const Q1_END = "2026-11-06"; // end of Quarter 1
+const Q2_END = "2027-01-22"; // end of Quarter 2 / end of Semester 1
+const Q3_END = "2027-04-09"; // end of Quarter 3
+function getQuarter(dateStr){
+  if (dateStr <= Q1_END) return 1;
+  if (dateStr <= Q2_END) return 2;
+  if (dateStr <= Q3_END) return 3;
+  return 4;
+}
+
 /* ---------- 0. Your son's actual classes (Period -> Subject/Teacher/Room) ---------- */
+// Most periods are Full-Year (FY) and don't change. Period 2 and Period 5 are
+// semester/quarter courses, so they're functions of the current quarter.
 const PERIOD_INFO = {
   1: {subject:"Biology H",        teacher:"Williams, Drew",      room:"RM042"},
-  2: {subject:"Digital Marketing",teacher:"Strelecki, Raymond",  room:"RM129"},
+  2: (q)=> q<=2
+        ? {subject:"Digital Marketing",     teacher:"Strelecki, Raymond", room:"RM129"}   // Semester 1 (Q1-Q2)
+        : {subject:"Foundations of Wood Arts", teacher:null,               room:null},     // Semester 2 (Q3-Q4)
   3: {subject:"Spanish 2CP",      teacher:"Roan, Colleen",       room:"RM258"},
   4: {subject:"Geometry A",       teacher:"Salton, Laura",       room:"RM071"},
-  5: {subject:"Health 1",         teacher:"Ascolese, Joseph J",  room:"RM121"},
+  5: (q)=> q===1
+        ? {subject:"Health 1",     teacher:"Ascolese, Joseph J", room:"RM121"}             // Quarter 1 only
+        : {subject:"Physical Ed 9", teacher:null,                 room:null},              // Quarters 2-4
   6: {subject:"CAD Architecture", teacher:"Ponzio, Peter",       room:"RM004"},
   7: {subject:"World History A",  teacher:"Yuknis, Cara",        room:"RM112"},
   8: {subject:"English 1A",       teacher:"Gourley, Jacob",      room:"RM279"},
@@ -247,14 +267,19 @@ const PERIOD_INFO = {
 const HOMEROOM_INFO = {subject:"Homeroom", teacher:"Gibson, Christopher F", room:"RM082"};
 
 // Builds one schedule row. `key` is a period number (1-8), "HOMEROOM", or "LUNCH".
-function makeRow(key, start, end){
+// `dateStr` is needed to resolve quarter-dependent periods (2 and 5).
+function makeRow(key, start, end, dateStr){
   if (key === "LUNCH"){
     return {label:"Lunch", start, end, subject:null, teacher:null, room:null};
+  }
+  if (key === "LAB"){
+    return {label:"Lab", start, end, subject:"Lab", teacher:null, room:null};
   }
   if (key === "HOMEROOM"){
     return {label:"Homeroom", start, end, subject:null, teacher:HOMEROOM_INFO.teacher, room:HOMEROOM_INFO.room};
   }
-  const info = PERIOD_INFO[key];
+  const raw = PERIOD_INFO[key];
+  const info = typeof raw === "function" ? raw(getQuarter(dateStr)) : raw;
   return {
     label: "Period " + key,
     start, end,
@@ -280,35 +305,35 @@ const ROTATING_SLOTS = [
 const ROTATING_PERIODS_BY_DAY = {
   1: [1,2,3,"LUNCH",5,6,7],
   2: [2,3,4,"LUNCH",6,7,8],
-  3: [3,4,1,"LUNCH",7,8,5],
+  3: [3,4,1,"LAB",7,8,5],   // Day 3: Lab period instead of Lunch (per sheet)
   4: [4,1,2,"LUNCH",8,5,6],
 };
-function rotatingSchedule(dayNum){
+function rotatingSchedule(dayNum, dateStr){
   const seq = ROTATING_PERIODS_BY_DAY[dayNum];
   return {
     name: "Day " + dayNum + " Schedule",
-    periods: ROTATING_SLOTS.map((slot,i)=> makeRow(seq[i], slot[0], slot[1]))
+    periods: ROTATING_SLOTS.map((slot,i)=> makeRow(seq[i], slot[0], slot[1], dateStr))
   };
 }
 
 const SCHEDULES = {
-  fullday8: {
+  fullday8: (dateStr)=>({
     name: "Full 8-Period Day",
     periods: [
-      makeRow(1,"7:30","8:11"), makeRow("HOMEROOM","8:16","8:25"), makeRow(2,"8:30","9:11"),
-      makeRow(3,"9:16","9:57"), makeRow(4,"10:02","10:43"), makeRow("LUNCH","10:43","11:13"),
-      makeRow(5,"11:16","11:57"), makeRow(6,"12:02","12:43"), makeRow(7,"12:48","1:29"),
-      makeRow(8,"1:34","2:15")
+      makeRow(1,"7:30","8:11",dateStr), makeRow("HOMEROOM","8:16","8:25",dateStr), makeRow(2,"8:30","9:11",dateStr),
+      makeRow(3,"9:16","9:57",dateStr), makeRow(4,"10:02","10:43",dateStr), makeRow("LUNCH","10:43","11:13",dateStr),
+      makeRow(5,"11:16","11:57",dateStr), makeRow(6,"12:02","12:43",dateStr), makeRow(7,"12:48","1:29",dateStr),
+      makeRow(8,"1:34","2:15",dateStr)
     ]
-  },
-  earlyDismissal8: {
+  }),
+  earlyDismissal8: (dateStr)=>({
     name: "Early Dismissal (8 periods)",
     periods: [
-      makeRow(1,"7:30","8:00"), makeRow(2,"8:05","8:35"), makeRow(3,"8:40","9:10"),
-      makeRow(4,"9:15","9:45"), makeRow(5,"9:50","10:20"), makeRow(6,"10:25","10:55"),
-      makeRow(7,"11:00","11:30"), makeRow(8,"11:35","12:05")
+      makeRow(1,"7:30","8:00",dateStr), makeRow(2,"8:05","8:35",dateStr), makeRow(3,"8:40","9:10",dateStr),
+      makeRow(4,"9:15","9:45",dateStr), makeRow(5,"9:50","10:20",dateStr), makeRow(6,"10:25","10:55",dateStr),
+      makeRow(7,"11:00","11:30",dateStr), makeRow(8,"11:35","12:05",dateStr)
     ]
-  },
+  }),
   earlyDismissalJune: {
     name: "Early Dismissal (June)",
     periods: [
@@ -327,11 +352,11 @@ const DELAYED_OPENING_SLOTS = [
   ["11:31","12:11"], // lunch
   ["12:14","12:51"],["12:56","1:33"],["1:38","2:15"]
 ];
-function delayedOpeningSchedule(dayNum){
+function delayedOpeningSchedule(dayNum, dateStr){
   const seq = ROTATING_PERIODS_BY_DAY[dayNum];
   return {
     name: "Delayed Opening – Day " + dayNum,
-    periods: DELAYED_OPENING_SLOTS.map((slot,i)=> makeRow(seq[i], slot[0], slot[1]))
+    periods: DELAYED_OPENING_SLOTS.map((slot,i)=> makeRow(seq[i], slot[0], slot[1], dateStr))
   };
 }
 
@@ -347,11 +372,55 @@ const ADVANCE_WARNING_PERIODS_BY_DAY = {
   3: [3,4,1,7,8,5],
   4: [4,1,2,8,5,6],
 };
-function advanceWarningSchedule(dayNum){
+function advanceWarningSchedule(dayNum, dateStr){
   const seq = ADVANCE_WARNING_PERIODS_BY_DAY[dayNum];
   return {
     name: "Advance-Warning Dismissal – Day " + dayNum,
-    periods: ADVANCE_WARNING_SLOTS.map((slot,i)=> makeRow(seq[i], slot[0], slot[1]))
+    periods: ADVANCE_WARNING_SLOTS.map((slot,i)=> makeRow(seq[i], slot[0], slot[1], dateStr))
+  };
+}
+
+/* ---------- 0b. Green Brook Middle School (Ashwin) — same rotating slot
+   structure, its own courses. Periods 3,4,5,6 are fixed all year. Periods
+   1 & 2 depend on the day column (1-4) AND the semester. ---------- */
+const MS_ROTATING_SLOTS = [
+  ["8:10","9:05"],  // Period 1
+  ["9:07","9:59"],  // Period 2
+  ["10:03","10:55"],// Period 3
+  ["10:57","11:49"],// Period 4
+  ["11:53","12:32"],// Lunch
+  ["12:35","1:14"], // PGC
+  ["1:18","2:10"],  // Period 5
+  ["2:12","3:04"],  // Period 6
+];
+function msPeriod1(dayNum, q){
+  if (dayNum===2 || dayNum===4) return {subject:"Senior Band – Brass", teacher:"Sorensen, Vincent", room:"RM307"};
+  return q<=2
+    ? {subject:"Innovation Animation", teacher:"McNerney, Colleen", room:"RM206"}
+    : {subject:"PE/Health 7 (Semester 2)", teacher:"Fox / Yanes", room:"Gymnasium"};
+}
+function msPeriod2(dayNum, q){
+  if (dayNum===1 || dayNum===3) return {subject:"Spanish 7", teacher:"Castillo, Diana", room:"RM207"};
+  return q<=2
+    ? {subject:"PE/Health 7 (Semester 1)", teacher:"Fox / Yanes", room:"Gymnasium"}
+    : {subject:"Leadership I", teacher:"MacNamara-Ferrara, Erin A", room:"RM203"};
+}
+function msRotatingSchedule(dayNum, dateStr){
+  const q = getQuarter(dateStr);
+  const p1 = msPeriod1(dayNum, q), p2 = msPeriod2(dayNum, q);
+  const s = MS_ROTATING_SLOTS;
+  return {
+    name: "Day " + dayNum + " Schedule",
+    periods: [
+      {label:"Period 1", start:s[0][0], end:s[0][1], subject:p1.subject, teacher:p1.teacher, room:p1.room},
+      {label:"Period 2", start:s[1][0], end:s[1][1], subject:p2.subject, teacher:p2.teacher, room:p2.room},
+      {label:"Period 3", start:s[2][0], end:s[2][1], subject:"Social Studies 7", teacher:"Mojta, Brian", room:"RM221"},
+      {label:"Period 4", start:s[3][0], end:s[3][1], subject:"Algebra B", teacher:"Esposito, Richard", room:"RM219"},
+      {label:"Lunch",    start:s[4][0], end:s[4][1], subject:null, teacher:null, room:"Cafeteria"},
+      {label:"PGC",      start:s[5][0], end:s[5][1], subject:null, teacher:null, room:null},
+      {label:"Period 5", start:s[6][0], end:s[6][1], subject:"Science 7", teacher:"Brown, Shane", room:"RM225"},
+      {label:"Period 6", start:s[7][0], end:s[7][1], subject:"English/Language Arts 7", teacher:"Alzaher, Janine", room:"RM321"},
+    ]
   };
 }
 
@@ -464,7 +533,7 @@ const SCHOOL_END_MS = "2027-06-17";
 
 const KIDS = {
   whrhs:       {label:"WHRHS",        hasRotation:true,  exceptions:EXCEPTIONS,    start:START,    end:SCHOOL_END,    schoolStartBound:"2026-08-24"},
-  middleschool:{label:"Middle School",hasRotation:false, exceptions:EXCEPTIONS_MS, start:START_MS, end:SCHOOL_END_MS, schoolStartBound:"2026-08-24"},
+  middleschool:{label:"Middle School",hasRotation:true,  exceptions:EXCEPTIONS_MS, start:START_MS, end:SCHOOL_END_MS, schoolStartBound:"2026-08-24"},
 };
 let currentKid = "whrhs";
 
@@ -474,7 +543,7 @@ function isWeekend(d){ const w=d.getDay(); return w===0||w===6; }
 
 // Exception types that pause/skip the Day 1-4 rotation entirely (no periods run, or a
 // fixed non-rotating period order is used instead of the cycle).
-const BREAKING_TYPES = ["closed","full","early","earlyJune"];
+const BREAKING_TYPES = ["closed","full","early","earlyJune","oneSession"];
 // Exception types that still run the normal Day 1-4 rotation, just compressed/shifted
 // in time — these need to know which Day number applies.
 const CONTINUING_TYPES = ["delayed","advanceWarning"];
@@ -486,15 +555,6 @@ function classify(dateStr, kid){
   if (isWeekend(d)) return {kind:"weekend"};
   if (dateStr < cfg.schoolStartBound || dateStr > cfg.end) return {kind:"outside"};
   const ex = cfg.exceptions[dateStr];
-
-  if (!cfg.hasRotation){
-    // Middle school: no period rotation, just school day / closed / one-session day
-    if (ex && ex.type === "closed") return {kind:"closed", name:ex.name};
-    if (ex && ex.type === "oneSession") return {kind:"oneSession", name:ex.name};
-    const start = new Date(cfg.start+"T00:00:00");
-    if (d < start) return {kind:"pre"};
-    return {kind:"schoolday"};
-  }
 
   if (ex && BREAKING_TYPES.includes(ex.type)){
     return {kind:ex.type, name:ex.name};
@@ -529,16 +589,16 @@ function describe(dateStr, kid){
     case "outside": return {label:"Outside school year", color:"var(--off)", schedule:null};
     case "closed": return {label:"No School", sub:c.name, color:"var(--off)", schedule:null};
     case "oneSession": return {label:"One-Session Day", sub:c.name, color:"var(--early)", schedule:null};
-    case "schoolday": return {label:"School Day", color:"var(--day1)", schedule:null};
-    case "full": return {label:"Full Day (1–8)", sub:c.name, color:"var(--day1)", schedule:SCHEDULES.fullday8};
-    case "early": return {label:"Early Dismissal", sub:c.name, color:"var(--early)", schedule:SCHEDULES.earlyDismissal8};
+    case "full": return {label:"Full Day (1–8)", sub:c.name, color:"var(--day1)", schedule:SCHEDULES.fullday8(dateStr)};
+    case "early": return {label:"Early Dismissal", sub:c.name, color:"var(--early)", schedule:SCHEDULES.earlyDismissal8(dateStr)};
     case "earlyJune": return {label:"Early Dismissal", sub:c.name, color:"var(--early)", schedule:SCHEDULES.earlyDismissalJune};
-    case "delayed": return {label:"Delayed Opening", sub:c.name || ("Day "+c.dayNum), color:"var(--early)", schedule:delayedOpeningSchedule(c.dayNum)};
-    case "advanceWarning": return {label:"Early Dismissal", sub:c.name || ("Day "+c.dayNum), color:"var(--early)", schedule:advanceWarningSchedule(c.dayNum)};
+    case "delayed": return {label:"Delayed Opening", sub:c.name || ("Day "+c.dayNum), color:"var(--early)", schedule:delayedOpeningSchedule(c.dayNum, dateStr)};
+    case "advanceWarning": return {label:"Early Dismissal", sub:c.name || ("Day "+c.dayNum), color:"var(--early)", schedule:advanceWarningSchedule(c.dayNum, dateStr)};
     case "pre": return {label:"Before school starts", color:"var(--off)", schedule:null};
     case "day": {
       const colors=["","var(--day1)","var(--day2)","var(--day3)","var(--day4)"];
-      return {label:"Day "+c.dayNum, color:colors[c.dayNum], schedule:rotatingSchedule(c.dayNum)};
+      const schedule = kid === "whrhs" ? rotatingSchedule(c.dayNum, dateStr) : msRotatingSchedule(c.dayNum, dateStr);
+      return {label:"Day "+c.dayNum, color:colors[c.dayNum], schedule};
     }
   }
 }
