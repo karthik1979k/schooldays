@@ -480,9 +480,7 @@ const START = "2026-08-27"; // first "Day 1" (day after full orientation day)
 const SCHOOL_END = "2027-06-11";
 
 /* ---------- 2b. MIDDLE SCHOOL (Green Brook Township) — no period rotation given,
-   just regular school day vs closed vs one-session (half) day ---------- 
-     "2026-10-20":{type:"closed", name:"Diwali"},
-   */
+   just regular school day vs closed vs one-session (half) day ---------- */
 const EXCEPTIONS_MS = {
   "2026-08-24":{type:"closed", name:"Staff Development Day"},
   "2026-08-25":{type:"closed", name:"Staff Development Day"},
@@ -492,6 +490,7 @@ const EXCEPTIONS_MS = {
   "2026-09-21":{type:"closed", name:"Yom Kippur"},
   "2026-10-09":{type:"oneSession", name:"One-Session Day"},
   "2026-10-12":{type:"closed", name:"Columbus Day / Staff Development"},
+  "2026-10-20":{type:"closed", name:"Diwali"},
   "2026-11-02":{type:"oneSession", name:"Parent Teacher Conferences"},
   "2026-11-03":{type:"oneSession", name:"Parent Teacher Conferences"},
   "2026-11-04":{type:"oneSession", name:"Parent Teacher Conferences"},
@@ -544,10 +543,11 @@ function isWeekend(d){ const w=d.getDay(); return w===0||w===6; }
 
 // Exception types that pause/skip the Day 1-4 rotation entirely (no periods run, or a
 // fixed non-rotating period order is used instead of the cycle).
-const BREAKING_TYPES = ["closed","full","early","earlyJune","oneSession"];
+const BREAKING_TYPES = ["closed","full","early","earlyJune"];
 // Exception types that still run the normal Day 1-4 rotation, just compressed/shifted
-// in time — these need to know which Day number applies.
-const CONTINUING_TYPES = ["delayed","advanceWarning"];
+// in time — these need to know which Day number applies. Middle school "oneSession"
+// (half) days still follow the regular D1-D4 class rotation, just end early.
+const CONTINUING_TYPES = ["delayed","advanceWarning","oneSession"];
 
 function classify(dateStr, kid){
   kid = kid || currentKid;
@@ -589,7 +589,11 @@ function describe(dateStr, kid){
     case "weekend": return {label:"Weekend", color:"var(--off)", schedule:null};
     case "outside": return {label:"Outside school year", color:"var(--off)", schedule:null};
     case "closed": return {label:"No School", sub:c.name, color:"var(--off)", schedule:null};
-    case "oneSession": return {label:"One-Session Day", sub:c.name, color:"var(--early)", schedule:null};
+    case "oneSession": {
+      const colors=["","var(--day1)","var(--day2)","var(--day3)","var(--day4)"];
+      const schedule = kid === "whrhs" ? rotatingSchedule(c.dayNum, dateStr) : msRotatingSchedule(c.dayNum, dateStr);
+      return {label:"One-Session Day", sub:(c.name||"")+" — Day "+c.dayNum+" (same class order; actual shortened times not in the sheet)", color:colors[c.dayNum], schedule};
+    }
     case "full": return {label:"Full Day (1–8)", sub:c.name, color:"var(--day1)", schedule:SCHEDULES.fullday8(dateStr)};
     case "early": return {label:"Early Dismissal", sub:c.name, color:"var(--early)", schedule:SCHEDULES.earlyDismissal8(dateStr)};
     case "earlyJune": return {label:"Early Dismissal", sub:c.name, color:"var(--early)", schedule:SCHEDULES.earlyDismissalJune};
