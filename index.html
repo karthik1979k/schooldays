@@ -549,6 +549,31 @@ const BREAKING_TYPES = ["closed","full","early","earlyJune"];
 // (half) days still follow the regular D1-D4 class rotation, just end early.
 const CONTINUING_TYPES = ["delayed","advanceWarning","oneSession"];
 
+// The Day 1-4 rotation is one shared township-wide sequence — both schools follow
+// the same Day label on the same date, even if one building is individually closed
+// that day for a reason the other isn't (e.g. a holiday only one school observes).
+// So the day number always comes from WHRHS's calendar (the one verified against
+// the printed rotation grid); each kid's own exceptions only decide whether that
+// kid's school is in session, not which Day number the date carries.
+const masterDayNumCache = {};
+function masterDayNum(dateStr){
+  if (masterDayNumCache[dateStr] !== undefined) return masterDayNumCache[dateStr];
+  const start = new Date(START+"T00:00:00");
+  const d = new Date(dateStr+"T00:00:00");
+  let count = 0, cur = new Date(start);
+  while (cur <= d){
+    const cs = fmt(cur);
+    const cw = cur.getDay();
+    const cex = EXCEPTIONS[cs];
+    const skip = (cw===0||cw===6) || (cex && BREAKING_TYPES.includes(cex.type));
+    if (!skip) count++;
+    cur.setDate(cur.getDate()+1);
+  }
+  const dayNum = ((count-1) % 4) + 1;
+  masterDayNumCache[dateStr] = dayNum;
+  return dayNum;
+}
+
 function classify(dateStr, kid){
   kid = kid || currentKid;
   const cfg = KIDS[kid];
@@ -560,22 +585,9 @@ function classify(dateStr, kid){
   if (ex && BREAKING_TYPES.includes(ex.type)){
     return {kind:ex.type, name:ex.name};
   }
-  // otherwise: count school days since START to get Day 1-4
-  // (this also covers "delayed"/"advanceWarning" dates, which still take a day number)
   const start = new Date(cfg.start+"T00:00:00");
   if (d < start) return {kind:"pre"};
-  let count = 0, cur = new Date(start);
-  while (cur <= d){
-    const cs = fmt(cur);
-    const cw = cur.getDay();
-    const cex = cfg.exceptions[cs];
-    const skip = (cw===0||cw===6) || (cex && BREAKING_TYPES.includes(cex.type));
-    if (!skip){
-      count++;
-    }
-    cur.setDate(cur.getDate()+1);
-  }
-  const dayNum = ((count-1) % 4) + 1;
+  const dayNum = masterDayNum(dateStr);
   if (ex && CONTINUING_TYPES.includes(ex.type)){
     return {kind:ex.type, dayNum, name:ex.name};
   }
